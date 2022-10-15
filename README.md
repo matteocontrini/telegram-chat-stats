@@ -11,7 +11,7 @@ Environment variables:
 - `BOT_TOKEN`: Telegram bot token
 - `CHAT_ID`: Telegram chat ID to calculate the stats for
 - `CHANNEL_ID`: Telegram channel ID to send the report to
-- `SESSION_NAME`: name of the file where to store the session data
+- `SESSION_NAME`: name of the Pyrogram session (reads/writes to `{SESSION_NAME}.session`)
 
 Run with:
 
