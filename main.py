@@ -63,6 +63,16 @@ async def get_cum() -> int:
     return await tg.search_messages_count(CHAT_ID)
 
 
+def render_counts(counts: dict) -> str:
+    text = '<pre>'
+    max_key_len = max([len(key) for key in counts.keys()])
+    for key, value in counts.items():
+        padding = ' ' * (max_key_len - len(key))
+        text += f' {key}: {padding}<b>{value}</b>\n'
+    text += '</pre>'
+    return text
+
+
 async def main():
     async with tg:
         totals, users = await get_yesterday_counts()
@@ -73,18 +83,11 @@ async def main():
         text = f'🗓 <b>{pretty_date}</b>\n\n'
 
         text += f'<b>Total</b>:\n'
-
-        text += '<pre>'
-        for key, value in totals.items():
-            text += f' {key}: <b>{value}</b>\n'
-        text += '</pre>'
+        text += render_counts(totals)
 
         for name, users in users.items():
             text += f'\n<b>{name}</b>:\n'
-            text += '<pre>'
-            for key, value in users.items():
-                text += f' {key}: <b>{value}</b>\n'
-            text += '</pre>'
+            text += render_counts(users)
 
         cum = await get_cum()
         text += f'\n📈 <b>Cum:</b> <code>{cum}</code>'
