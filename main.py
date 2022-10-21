@@ -85,7 +85,7 @@ async def main():
         text += f'<b>Total</b>:\n'
         text += render_counts(totals)
 
-        for name, users in users.items():
+        for name, users in sorted(users.items()):
             text += f'\n<b>{name}</b>:\n'
             text += render_counts(users)
 
