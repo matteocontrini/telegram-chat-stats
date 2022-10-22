@@ -47,14 +47,11 @@ async def get_day_counts(max_date) -> (dict, dict):
 
         users[name]['count'] += 1
 
-        if message.entities:
-            for entity in message.entities:
-                if entity.type in link_types:
-                    users[name]['links'] += 1
-        if message.caption_entities:
-            for entity in message.caption_entities:
-                if entity.type in link_types:
-                    users[name]['links'] += 1
+        entities = message.entities or []
+        caption_entities = message.caption_entities or []
+        for entity in entities + caption_entities:
+            if entity.type in link_types:
+                users[name]['links'] += 1
 
         if message.media:
             # Exclude from media count
