@@ -34,7 +34,9 @@ async def get_day_counts(max_date) -> (dict, dict):
     }
     users = {}
 
-    async for message in tg.get_chat_history(int(CHAT_ID)):
+    chat_id = int(CHAT_ID) if CHAT_ID.isdigit() else CHAT_ID
+
+    async for message in tg.get_chat_history(chat_id):
         date = message.date.astimezone(tz)
         if date > max_date:
             continue
