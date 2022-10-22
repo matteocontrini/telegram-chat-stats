@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from zoneinfo import ZoneInfo
 
 import telebot
@@ -21,8 +21,9 @@ excluded_media = [pyrogram.enums.MessageMediaType.WEB_PAGE]
 link_types = [pyrogram.enums.MessageEntityType.TEXT_LINK, pyrogram.enums.MessageEntityType.URL]
 
 
-async def get_day_counts(max_date) -> (dict, dict):
-    min_date = max_date - timedelta(days=1)
+async def get_day_counts(day: date) -> (dict, dict):
+    min_date = datetime.combine(day, datetime.min.time(), tzinfo=tz)
+    max_date = min_date + timedelta(days=1)
 
     total = {
         'count': 0,
@@ -49,6 +50,7 @@ async def get_day_counts(max_date) -> (dict, dict):
 
         users[name]['count'] += 1
 
+        # Count links from message and caption entities
         entities = message.entities or []
         caption_entities = message.caption_entities or []
         for entity in entities + caption_entities:
@@ -67,7 +69,6 @@ async def get_day_counts(max_date) -> (dict, dict):
             media = getattr(message, message.media.name.lower(), '')
             if hasattr(media, 'file_size'):
                 users[name]['data'] += media.file_size
-
         else:
             users[name]['text'] += 1
             users[name]['chars'] += len(message.text)
@@ -79,7 +80,7 @@ async def get_day_counts(max_date) -> (dict, dict):
 
         data_mb = (users[name]['data'] + users[name]['chars']) / 2 ** 20
         users[name]['data'] = f'{data_mb:.2f} MB'
-    
+
     data_mb = (total['data'] + total['chars']) / 2 ** 20
     total['data'] = f'{data_mb:.2f} MB'
 
@@ -102,11 +103,10 @@ def render_counts(counts: dict) -> str:
 
 async def main():
     async with tg:
-        today = datetime.now(tz).replace(hour=0, minute=0, second=0, microsecond=0)
+        day = date.today() - timedelta(days=1)
+        totals, users = await get_day_counts(day)
 
-        totals, users = await get_day_counts(today)
-
-        pretty_date = (today - timedelta(days=1)).strftime('%Y-%m-%d')
+        pretty_date = day.strftime('%Y-%m-%d')
         text = f'🗓 <b>{pretty_date}</b>\n\n'
 
         text += f'<b>Total</b>:\n'
