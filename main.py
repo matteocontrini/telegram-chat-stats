@@ -2,7 +2,7 @@ import os
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-#import telebot
+import telebot
 import pyrogram
 
 tz = ZoneInfo('Europe/Rome')
@@ -17,20 +17,20 @@ SESSION_NAME = os.environ['SESSION_NAME']
 tg = pyrogram.Client(SESSION_NAME, API_ID, API_HASH)
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode='HTML')
 
-
 excluded_media = [pyrogram.enums.MessageMediaType.WEB_PAGE]
 link_types = [pyrogram.enums.MessageEntityType.TEXT_LINK, pyrogram.enums.MessageEntityType.URL]
+
 
 async def get_day_counts(max_date) -> (dict, dict):
     min_date = max_date - timedelta(days=1)
 
     total = {
-            'count': 0,
-            'text' : 0,
-            'links': 0,
-            'media': 0,
-            'chars': 0,
-            'data' : 0,
+        'count': 0,
+        'text': 0,
+        'links': 0,
+        'media': 0,
+        'chars': 0,
+        'data': 0,
     }
     users = {}
 
@@ -56,30 +56,33 @@ async def get_day_counts(max_date) -> (dict, dict):
                 if entity.type in link_types:
                     users[name]['links'] += 1
 
-        if message.media: 
-            if message.media in excluded_media:                    #exclude from media count
+        if message.media:
+            # Exclude from media count
+            if message.media in excluded_media:
                 continue
 
             users[name]['media'] += 1
             users[name]['chars'] += len(message.caption or '')
-            
-            media = getattr(message, message.media.name.lower(), '') 
-            if hasattr(media, "file_size"):
-                users[name]['data'] += media.file_size             #if media has file_size add it
-            
+
+            # Sum file size if the media has a size
+            media = getattr(message, message.media.name.lower(), '')
+            if hasattr(media, 'file_size'):
+                users[name]['data'] += media.file_size
+
         else:
             users[name]['text'] += 1
             users[name]['chars'] += len(message.text)
-    
+
     for name in users:
+        # Compute totals
         for key in total:
-            total[key] += users[name][key]                          #calculate total
+            total[key] += users[name][key]
 
-        data_MB = (users[name]["data"]+users[name]["chars"])/2**20
-        users[name]['data'] = f'{data_MB:.2f} MB'                   #format file size 
-
-    data_MB = (total["data"]+total["chars"])/2**20
-    total['data'] = f'{data_MB:.2f} MB'                             #format file size on total
+        data_mb = (users[name]['data'] + users[name]['chars']) / 2 ** 20
+        users[name]['data'] = f'{data_mb:.2f} MB'
+    
+    data_mb = (total['data'] + total['chars']) / 2 ** 20
+    total['data'] = f'{data_mb:.2f} MB'
 
     return total, users
 
@@ -101,7 +104,7 @@ def render_counts(counts: dict) -> str:
 async def main():
     async with tg:
         today = datetime.now(tz).replace(hour=0, minute=0, second=0, microsecond=0)
-        
+
         totals, users = await get_day_counts(today)
 
         pretty_date = (today - timedelta(days=1)).strftime('%Y-%m-%d')
