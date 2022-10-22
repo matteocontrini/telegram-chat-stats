@@ -2,8 +2,8 @@ import os
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-import telebot
-from pyrogram import Client
+#import telebot
+import pyrogram
 
 tz = ZoneInfo('Europe/Rome')
 
@@ -14,48 +14,73 @@ CHAT_ID = os.environ['CHAT_ID']
 CHANNEL_ID = os.environ['CHANNEL_ID']
 SESSION_NAME = os.environ['SESSION_NAME']
 
-tg = Client(SESSION_NAME, API_ID, API_HASH)
+tg = pyrogram.Client(SESSION_NAME, API_ID, API_HASH)
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode='HTML')
 
 
-async def get_yesterday_counts() -> (dict, dict):
-    max_date = datetime.now(tz).replace(hour=0, minute=0, second=0, microsecond=0)
+excluded_media = [pyrogram.enums.MessageMediaType.WEB_PAGE]
+link_types = [pyrogram.enums.MessageEntityType.TEXT_LINK, pyrogram.enums.MessageEntityType.URL]
+
+async def get_day_counts(max_date) -> (dict, dict):
     min_date = max_date - timedelta(days=1)
 
     total = {
-        'count': 0,
-        'text': 0,
-        'media': 0,
-        'chars': 0,
+            'count': 0,
+            'text' : 0,
+            'links': 0,
+            'media': 0,
+            'chars': 0,
+            'data' : 0,
     }
     users = {}
 
-    async for message in tg.get_chat_history(CHAT_ID):
+    async for message in tg.get_chat_history(int(CHAT_ID)):
         date = message.date.astimezone(tz)
         if date > max_date:
             continue
         if date < min_date:
             break
+
         name = message.from_user.first_name
         if name not in users:
-            users[name] = {
-                'count': 0,
-                'text': 0,
-                'media': 0,
-                'chars': 0,
-            }
+            users[name] = total.copy()
+
         users[name]['count'] += 1
-        total['count'] += 1
-        if message.media:
+
+        if message.entities:
+            for entity in message.entities:
+                if entity.type in link_types:
+                    users[name]['links'] += 1
+        if message.caption_entities:
+            for entity in message.caption_entities:
+                if entity.type in link_types:
+                    users[name]['links'] += 1
+
+        if message.media: 
+            if message.media in excluded_media:                    #exclude from media count
+                continue
+
             users[name]['media'] += 1
-            total['media'] += 1
             users[name]['chars'] += len(message.caption or '')
-            total['chars'] += len(message.caption or '')
+            
+            media = getattr(message, message.media.name.lower(), '') 
+            if hasattr(media, "file_size"):
+                users[name]['data'] += media.file_size             #if media has file_size add it
+            
         else:
             users[name]['text'] += 1
             users[name]['chars'] += len(message.text)
-            total['text'] += 1
-            total['chars'] += len(message.text)
+    
+    for name in users:
+        for key in total:
+            total[key] += users[name][key]                          #calculate total
+
+        data_MB = (users[name]["data"]+users[name]["chars"])/2**20
+        users[name]['data'] = f'{data_MB:.2f} MB'                   #format file size 
+
+    data_MB = (total["data"]+total["chars"])/2**20
+    total['data'] = f'{data_MB:.2f} MB'                             #format file size on total
+
     return total, users
 
 
@@ -68,18 +93,18 @@ def render_counts(counts: dict) -> str:
     max_key_len = max([len(key) for key in counts.keys()])
     for key, value in counts.items():
         padding = ' ' * (max_key_len - len(key))
-        text += f' {key}: {padding}<b>{value}</b>\n'
+        text += f' {key}: {padding}{value}\n'
     text += '</pre>'
     return text
 
 
 async def main():
     async with tg:
-        totals, users = await get_yesterday_counts()
+        today = datetime.now(tz).replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        totals, users = await get_day_counts(today)
 
-        yesterday = datetime.now(tz).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
-        pretty_date = yesterday.strftime('%Y-%m-%d')
-
+        pretty_date = (today - timedelta(days=1)).strftime('%Y-%m-%d')
         text = f'🗓 <b>{pretty_date}</b>\n\n'
 
         text += f'<b>Total</b>:\n'
@@ -90,7 +115,7 @@ async def main():
             text += render_counts(users)
 
         cum = await get_cum()
-        text += f'\n📈 <b>Cum:</b> <code>{cum}</code>'
+        text += f'\n📈 <b>Cum:</b> <pre>{cum}</pre>'
 
         print(text)
 
