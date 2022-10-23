@@ -17,7 +17,7 @@ SESSION_NAME = os.environ['SESSION_NAME']
 tg = pyrogram.Client(SESSION_NAME, API_ID, API_HASH)
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode='HTML')
 
-excluded_media = [pyrogram.enums.MessageMediaType.WEB_PAGE]
+excluded_media = [None, pyrogram.enums.MessageMediaType.WEB_PAGE] 
 link_types = [pyrogram.enums.MessageEntityType.TEXT_LINK, pyrogram.enums.MessageEntityType.URL]
 
 
@@ -27,11 +27,11 @@ async def get_day_counts(day: date) -> (dict, dict):
 
     total = {
         'count': 0,
+        'chars': 0,
+        'data': 0,
         'text': 0,
         'links': 0,
         'media': 0,
-        'chars': 0,
-        'data': 0,
     }
     users = {}
 
@@ -46,9 +46,10 @@ async def get_day_counts(day: date) -> (dict, dict):
 
         name = message.from_user.first_name
         if name not in users:
-            users[name] = total.copy()
+            users[name] = total.copy()  
 
         users[name]['count'] += 1
+        users[name]['chars'] += len(message.caption or message.text or '')
 
         # Count links from message and caption entities
         entities = message.entities or []
@@ -56,22 +57,15 @@ async def get_day_counts(day: date) -> (dict, dict):
         for entity in entities + caption_entities:
             if entity.type in link_types:
                 users[name]['links'] += 1
-
-        if message.media:
-            # Exclude from media count
-            if message.media in excluded_media:
-                continue
-
+    
+        if message.media not in excluded_media:
             users[name]['media'] += 1
-            users[name]['chars'] += len(message.caption or '')
-
             # Sum file size if the media has a size
             media = getattr(message, message.media.name.lower(), '')
             if hasattr(media, 'file_size'):
                 users[name]['data'] += media.file_size
         else:
             users[name]['text'] += 1
-            users[name]['chars'] += len(message.text)
 
     for name in users:
         # Compute totals
