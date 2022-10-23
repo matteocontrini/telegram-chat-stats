@@ -17,7 +17,7 @@ SESSION_NAME = os.environ['SESSION_NAME']
 tg = pyrogram.Client(SESSION_NAME, API_ID, API_HASH)
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode='HTML')
 
-excluded_media = [None, pyrogram.enums.MessageMediaType.WEB_PAGE] 
+excluded_media = [pyrogram.enums.MessageMediaType.WEB_PAGE]
 link_types = [pyrogram.enums.MessageEntityType.TEXT_LINK, pyrogram.enums.MessageEntityType.URL]
 
 
@@ -46,7 +46,7 @@ async def get_day_counts(day: date) -> (dict, dict):
 
         name = message.from_user.first_name
         if name not in users:
-            users[name] = total.copy()  
+            users[name] = total.copy()
 
         users[name]['count'] += 1
         users[name]['chars'] += len(message.caption or message.text or '')
@@ -57,8 +57,8 @@ async def get_day_counts(day: date) -> (dict, dict):
         for entity in entities + caption_entities:
             if entity.type in link_types:
                 users[name]['links'] += 1
-    
-        if message.media not in excluded_media:
+
+        if message.media and message.media not in excluded_media:
             users[name]['media'] += 1
             # Sum file size if the media has a size
             media = getattr(message, message.media.name.lower(), '')
