@@ -111,7 +111,7 @@ async def main():
             text += render_counts(users)
 
         cum = await get_cum()
-        text += f'\n📈 <b>Cum:</b> <pre>{cum}</pre>'
+        text += f'\n📈 <b>Cum:</b> <code>{cum}</code>'
 
         print(text)
 
