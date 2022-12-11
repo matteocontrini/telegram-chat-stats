@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import datetime, timedelta, date
 from zoneinfo import ZoneInfo
 
@@ -20,6 +21,8 @@ bot = telebot.TeleBot(BOT_TOKEN, parse_mode='HTML')
 excluded_media = [pyrogram.enums.MessageMediaType.WEB_PAGE]
 link_types = [pyrogram.enums.MessageEntityType.TEXT_LINK, pyrogram.enums.MessageEntityType.URL]
 
+laugh_pattern = re.compile(r'\b(a*ha+h[ha]*|lo+l+(?:ol)*|lma+o+|[😂|🤣|😹|😆]+)\b', flags=re.IGNORECASE)
+
 
 async def get_day_counts(day: date) -> (dict, dict):
     min_date = datetime.combine(day, datetime.min.time(), tzinfo=tz)
@@ -31,6 +34,7 @@ async def get_day_counts(day: date) -> (dict, dict):
         'data': 0,
         'text': 0,
         'links': 0,
+        'laughs': 0,
         'media': 0,
     }
     users = {}
@@ -48,8 +52,11 @@ async def get_day_counts(day: date) -> (dict, dict):
         if name not in users:
             users[name] = total.copy()
 
+        text = message.caption or message.text or ''
         users[name]['count'] += 1
-        users[name]['chars'] += len(message.caption or message.text or '')
+        users[name]['chars'] += len(text)
+        if laugh_pattern.search(text):
+            users[name]['laughs'] += 1
 
         # Count links from message and caption entities
         entities = message.entities or []
